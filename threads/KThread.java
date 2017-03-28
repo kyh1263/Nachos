@@ -417,6 +417,55 @@ public class KThread {
 	testKThread.join();
     }
 
+    public static void selfTest2()
+    {
+    	Lib.debug(dbgThread, "Enter KThread.selfTest2");
+    	Lock lock = new Lock();
+    	Condition2 condition = new Condition2(lock);
+    	Runnable runnableA = new Runnable()
+    	{
+    		public void run()
+    		{
+    			lock.acquire();
+    			KThread.currentThread().yield();
+    			condition2.wake();
+    			System.out.println("thread A begin");
+    			condition2.sleep();
+    			lock.release();
+    			System.out.println("thread A end");
+    		}
+    	}, runnableB = new Runnable()
+    	{
+    		public void run()
+    		{
+    			lock.acquire();
+    			KThread.currentThread().yield();
+    			condition2.sleep();
+    			System.out.println("thread B begin");
+    			condition2.wake();
+    			lock.release();
+    			System.out.println("thread B end");
+    		}
+    	};
+    	new KThread(runnableA).fork();
+    	new KThread(runnableB).fork();
+    }
+    
+    public static void selfTest3()
+    {
+    	Lib.debug(dbgThread, "Enter KThread.selfTest3");
+    	Runnable alarm = new Runnable()
+    	{
+    		public void run()
+    		{
+    			System.out.println(Machine.timer().getTime());
+    			ThreadedKernel.alarm.waitUntil(1000);
+    			System.out.println(Machine.timer().getTime());
+    		}
+    	};
+    	new KThread(alarm).fork();
+    }
+
     private static final char dbgThread = 't';
 
     /**
