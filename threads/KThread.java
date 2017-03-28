@@ -428,9 +428,9 @@ public class KThread {
     		{
     			lock.acquire();
     			KThread.currentThread().yield();
-    			condition2.wake();
+    			condition.wake();
     			System.out.println("thread A begin");
-    			condition2.sleep();
+    			condition.sleep();
     			lock.release();
     			System.out.println("thread A end");
     		}
@@ -440,15 +440,15 @@ public class KThread {
     		{
     			lock.acquire();
     			KThread.currentThread().yield();
-    			condition2.sleep();
+    			condition.sleep();
     			System.out.println("thread B begin");
-    			condition2.wake();
+    			condition.wake();
     			lock.release();
     			System.out.println("thread B end");
     		}
     	};
-    	new KThread(runnableA).fork();
     	new KThread(runnableB).fork();
+    	new KThread(runnableA).fork();
     }
     
     public static void selfTest3()
