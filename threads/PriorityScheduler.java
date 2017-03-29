@@ -163,52 +163,39 @@ public class PriorityScheduler extends Scheduler {
 	 *		return.
 	 */
 	
-	protected ThreadState NextThread() { //
-		ThreadState res=null;
-		for(int i=priorityMaximum;i>=priorityMinimum;i--)
-			if((res=waitThreads[i].pollFirst())!=null)
-				break;
-		return res;
-	}
-	
 	protected ThreadState pickNextThread() {
 	    // implement me
-		ThreadState res = NextThread(); //
-		if(holdThread!=null) //
+		ThreadState nextThread = null; //
+		for(int i = priorityMaximum;i >= priorityMinimum;i--) //
+		{
+			nextThread = waitThreads[i].pollFirst();
+			if(nextThread != null)
+				break;
+		}
+		if(holdThread != null) //
 		{
 			holdThread.holdQueues.remove(this);
 			holdThread.getEffectivePriority();
-			holdThread=res;
+			holdThread = nextThread;
 		}
-		if(res!=null) //
-			res.waitQueue = null;
-	    return res;
+		if(nextThread != null) //
+			nextThread.waitQueue = null;
+	    return nextThread;
 	}
 	
 	public void print() {
 	    Lib.assertTrue(Machine.interrupt().disabled());
 	    // implement me (if you want)
 	}
-
-	public void add(ThreadState thread) { //
-		waitThreads[thread.effectivePriority].add(thread);
-	}
-	
-	public boolean isEmpty() { //
-		for(int i = priorityMinimum;i <= priorityMaximum;i++)
-			if(!waitThreads[i].isEmpty())
-				return false;
-		return true;
-	}
 	
 	/**
 	 * <tt>true</tt> if this queue should transfer priority from waiting
 	 * threads to the owning thread.
 	 */
-	protected long cnt = 0; //
 	public boolean transferPriority;
-	protected TreeSet<ThreadState> waitThreads[] = new TreeSet[priorityMaximum+1]; //
+	protected long waitingTime = 0; //
 	protected ThreadState holdThread = null; //
+	protected TreeSet<ThreadState> waitThreads[] = new TreeSet[priorityMaximum+1]; //
 	
     }
 
@@ -233,9 +220,9 @@ public class PriorityScheduler extends Scheduler {
 	}
 	
 	public int compareTo(ThreadState target) { //
-		if(time > target.time)
+		if(waitingTime > target.waitingTime)
 			return 1;
-		else if(time == target.time)
+		else if(waitingTime == target.waitingTime)
 			return 0;
 		else
 			return -1;
@@ -260,10 +247,11 @@ public class PriorityScheduler extends Scheduler {
 		int i,temp = priority;
 		if(!holdQueues.isEmpty())
 		{
+			PriorityQueue holdQueue;
 			Iterator<PriorityQueue> iterator=holdQueues.iterator();
 			while(iterator.hasNext())
 			{
-				PriorityQueue holdQueue = (PriorityQueue)iterator.next();
+				holdQueue = (PriorityQueue)iterator.next();
 				for(i = priorityMaximum;i > temp;i--)
 					if(!holdQueue.waitThreads[i].isEmpty())
 					{
@@ -272,14 +260,14 @@ public class PriorityScheduler extends Scheduler {
 					}
 			}
 		}
-		if(waitQueue!=null&&temp!=effectivePriority)
+		if(waitQueue != null && temp != effectivePriority)
 		{
 			((PriorityQueue)waitQueue).waitThreads[effectivePriority].remove(this);
 			((PriorityQueue)waitQueue).waitThreads[temp].add(this);
 		}
-		if(holdThread!=null)
+		if(holdThread != null)
 			holdThread.getEffectivePriority();
-		return (effectivePriority=temp);
+		return (effectivePriority = temp);
 	    //return priority;
 	}
 
@@ -310,13 +298,13 @@ public class PriorityScheduler extends Scheduler {
 	 *
 	 * @see	nachos.threads.ThreadQueue#waitForAccess
 	 */
-	public void waitForAccess(PriorityQueue waitQueue) { //
+	public void waitForAccess(PriorityQueue Queue) { //
 	    // implement me
 		Lib.assertTrue(Machine.interrupt().disabled());
-		time=++waitQueue.cnt;
-		this.waitQueue=waitQueue;
-		waitQueue.add(this);
-		holdThread=waitQueue.holdThread;
+		waitQueue = Queue;
+		holdThread = Queue.holdThread;
+		waitingTime = ++Queue.waitingTime;
+		Queue.waitThreads[effectivePriority].add(this);
 		getEffectivePriority();
 	}
 
@@ -333,18 +321,28 @@ public class PriorityScheduler extends Scheduler {
 	public void acquire(PriorityQueue waitQueue) { //
 	    // implement me
 		Lib.assertTrue(Machine.interrupt().disabled());
+		boolean flag = true;
 		if(waitQueue.transferPriority)
 			holdQueues.add(waitQueue);
-		Lib.assertTrue(waitQueue.isEmpty());
+		for(int i = priorityMinimum;i <= priorityMaximum;i++)
+		{
+			if(!waitQueue.waitThreads[i].isEmpty())
+			{
+				flag = false;
+				break;
+			}
+		}
+		Lib.assertTrue(flag);
 	}	
 
 	/** The thread with which this object is associated. */	   
 	protected KThread thread;
 	/** The priority of the associated thread. */
-	protected int priority/**/, effectivePriority;
-	protected long time; //
-	protected ThreadQueue waitQueue=null; //
+	protected int priority,/**/effectivePriority;
+	protected long waitingTime = 0; //
+	protected ThreadState holdThread = null; //
+	protected ThreadQueue waitQueue = null; //
 	protected LinkedList<PriorityQueue> holdQueues = new LinkedList<PriorityQueue>(); //
-	protected ThreadState holdThread=null; //
+	
     }
 }
