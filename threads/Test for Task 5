@@ -79,11 +79,11 @@
     		thread.fork();
     	}
     	KThread.yield();
-    	Iterator iterator=Queue.iterator();
+    	Iterator<KThread> iterator=Queue.iterator();
     	while(iterator.hasNext())
     	{
     		intStatus=Machine.interrupt().disable();
-    		ThreadedKernel.scheduler.setPriority((KThread)iterator.next(),r);
+    		ThreadedKernel.scheduler.setPriority(iterator.next(),r);
     		Machine.interrupt().restore(intStatus);
     		r=(r+1)%module;
     	}
