@@ -1,72 +1,90 @@
- import java.util.*; //
- 
- private static class PingTest implements Runnable  
-    {  
-        Lock a=null,b=null;  
-        int name;  
-        PingTest(Lock A,Lock B,int x)  
-        {  
-            a=A;b=B;name=x;  
-        }  
-        public void run() {  
-            System.out.println("Thread "+name+" starts.");  
-            if(b!=null)  
-            {  
-                System.out.println("Thread "+name+" waits for Lock b.");  
-                b.acquire();  
-                System.out.println("Thread "+name+" gets Lock b.");  
-            }  
-            if(a!=null)  
-            {  
-                System.out.println("Thread "+name+" waits for Lock a.");  
-                a.acquire();  
-                System.out.println("Thread "+name+" gets Lock a.");  
-            }  
-            KThread.yield();  
-            boolean intStatus = Machine.interrupt().disable();  
-            System.out.println("Thread "+name+" has priority "+ThreadedKernel.scheduler.getEffectivePriority()+".");  
-            Machine.interrupt().restore(intStatus);  
-            KThread.yield();  
-            if(b!=null) b.release();  
-            if(a!=null) a.release();  
-            System.out.println("Thread "+name+" finishs.");  
-              
-        }  
-    }  
-      
-    public static void selfTest()  
-    {  
-    	Lock a=new Lock();  
-        Lock b=new Lock();  
-          
-        Queue<KThread> qq=new LinkedList<KThread>();  
-        for(int i=1;i<=5;i++)  
-        {  
-            KThread kk=new KThread(new PingTest(null,null,i));  
-            qq.add(kk);  
-            kk.setName("Thread-"+i).fork();  
-        }  
-        for(int i=6;i<=10;i++)  
-        {  
-            KThread kk=new KThread(new PingTest(a,null,i));  
-            qq.add(kk);  
-            kk.setName("Thread-"+i).fork();  
-        }  
-        for(int i=11;i<=15;i++)  
-        {  
-            KThread kk=new KThread(new PingTest(a,b,i));  
-            qq.add(kk);  
-            kk.setName("Thread-"+i).fork();  
-        }  
-        KThread.yield();  
-        Iterator it=qq.iterator();  
-        int pp=0;  
-        while(it.hasNext())  
-        {  
-            boolean intStatus = Machine.interrupt().disable();  
-            ThreadedKernel.scheduler.setPriority((KThread)it.next(),pp+1);  
-            Machine.interrupt().restore(intStatus);  
-            pp++;
-            if(pp>6)pp-=6;
-        }  
-    }  
+
+    private static class Test5 implements Runnable
+    {
+    	String name;
+    	Lock lockA,lockB,lockC;
+    	Test5(String msg,Lock lock1,Lock lock2,Lock lock3)
+    	{
+    		name=msg;
+    		lockA=lock1;
+    		lockB=lock2;
+    		lockC=lock3;
+    	}
+    	public void run()
+    	{
+    		System.out.println(name+" starts");
+    		if(lockC!=null)
+    		{
+    			System.out.println(name+" waits for lock3");
+    			lockC.acquire();
+    			System.out.println(name+" gets lock3");
+    		}
+    		if(lockB!=null)
+    		{
+    			System.out.println(name+" waits for lock2");
+    			lockB.acquire();
+    			System.out.println(name+" gets lock2");
+    		}
+    		if(lockA!=null)
+    		{
+    			System.out.println(name+" waits for lock1");
+    			lockA.acquire();
+    			System.out.println(name+" gets lock1");
+    		}
+    		KThread.yield();
+    		boolean intStatus=Machine.interrupt().disable();
+    		System.out.println(name+"'s effective priority is "+ThreadedKernel.scheduler.getEffectivePriority());
+    		Machine.interrupt().restore(intStatus);
+    		KThread.yield();
+    		if(lockC!=null)
+    			lockC.release();
+    		if(lockB!=null)
+    			lockB.release();
+    		if(lockA!=null)
+    			lockA.release();
+    		System.out.println(name+" finishes");
+    	}
+    }
+    
+    public static void selfTest5()
+    {
+    	final int module=5,number=5; //module<=PriorityScheduler.priorityMaximum+1;
+    	int i,r=0;
+    	boolean intStatus;
+    	Lock lock1=new Lock(),lock2=new Lock(),lock3=new Lock();
+    	KThread thread;
+    	Queue<KThread> Queue=new LinkedList<KThread>();
+    	for(i=1;i<=number;i++)
+    	{
+    		thread=new KThread(new Test5("A"+i,null,null,null));
+    		Queue.add(thread);
+    		thread.fork();
+    	}
+    	for(i=1;i<=number;i++)
+    	{
+    		thread=new KThread(new Test5("B"+i,lock1,null,null));
+    		Queue.add(thread);
+    		thread.fork();
+    	}
+    	for(i=1;i<=number;i++)
+    	{
+    		thread=new KThread(new Test5("C"+i,lock1,lock2,null));
+    		Queue.add(thread);
+    		thread.fork();
+    	}
+    	for(i=1;i<=number;i++)
+    	{
+    		thread=new KThread(new Test5("D"+i,lock1,lock2,lock3));
+    		Queue.add(thread);
+    		thread.fork();
+    	}
+    	KThread.yield();
+    	Iterator iterator=Queue.iterator();
+    	while(iterator.hasNext())
+    	{
+    		intStatus=Machine.interrupt().disable();
+    		ThreadedKernel.scheduler.setPriority((KThread)iterator.next(),r);
+    		Machine.interrupt().restore(intStatus);
+    		r=(r+1)%module;
+    	}
+    }
